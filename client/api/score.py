@@ -41,7 +41,6 @@ class Score(BaseSchoolApi):
         }
         try:
             res = self._post(score_url, data=payload, **kwargs)
-            print(res.text)
         except TooManyRedirects:
             raise ScoreException(self.code, '成绩接口已关闭')
         except RequestException:
