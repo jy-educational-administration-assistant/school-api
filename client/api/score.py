@@ -33,8 +33,6 @@ class Score(BaseSchoolApi):
 
         payload = {
             '__VIEWSTATE': view_state,
-            # '__EVENTTARGET': '',
-            # '__EVENTARGUMENT': '',
             'hidLanguage:': '',
             'btn_zcj': '历年成绩',
             'ddl_kcxz': '',
