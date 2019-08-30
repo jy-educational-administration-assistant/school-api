@@ -13,16 +13,18 @@ class StudentInfo(BaseSchoolApi):
     ''' 学生信息获取 '''
 
     def get_student_info(self, use_api=3, **kwargs):
-        ''' 成绩信息 获取入口
-        :param score_year: 成绩学年
-        :param score_term: 成绩学期
-        :param use_api:    0.接口1, 1.接口2, 3.接口3 ...
-        :param kwargs: requests模块参数
-        return
+        '''
+            成绩信息 获取入口
+            :param score_year: 成绩学年
+            :param score_term: 成绩学期
+            :param use_api:    0.接口1, 1.接口2, 3.接口3 ...
+            :param kwargs: requests模块参数
+            return
         '''
         student_info_url = self.school_url['STUDENT_INFO_URL'][use_api] + self.user.account
+
         try:
-            res = self._get(student_info_url, **kwargs)
+            view_state = self._get_view_state(student_info_url, **kwargs)
         except TooManyRedirects:
             msg = '可能是个人信息接口地址不对，请尝试更改use_api值'
             raise StudentException(self.code, msg)
@@ -31,6 +33,22 @@ class StudentInfo(BaseSchoolApi):
         except RequestException:
             msg = '获取个人信息请求参数失败'
             raise StudentException(self.code, msg)
+
+        payload = {
+            '__VIEWSTATE': view_state,
+            'hidLanguage:': '',
+            'Button1': '成绩统计',
+            'ddl_kcxz': '',
+            'ddlXN': '',
+            'ddlXQ': ''
+        }
+        try:
+            res = self._post(student_info_url, data=payload, **kwargs)
+        except TooManyRedirects:
+            raise ScoreException(self.code, '个人信息接口已关闭')
+        except RequestException:
+            raise ScoreException(self.code, '获取个人信息失败')
+
         html = res.content.decode('GB18030')
         tip = get_alert_tip(html)
         if tip:
@@ -47,10 +65,29 @@ class StudentInfoParse():
         self.use_api = use_api
         self.soup = BeautifulSoup(html, "html.parser")
         self._html_parse_of_info()
+        # self.get_pjxfjd()
+        # self.get_student_num()
+
+    # 获取所有成绩平均绩点
+    def get_pjxfjd(self):
+        span = self.soup.find('span', id='pjxfjd')
+        jd = span.find_all('b')
+        pjxfjd = jd[0].text.split('：')[1]
+        return pjxfjd
+
+    # 获取专业所有人数
+    def get_student_num(self):
+        span = self.soup.find('span', id='zyzrs')
+        rs = span.find_all('b')
+        rstext = rs[0].text
+        regex = re.compile('[1-9]\d*')
+        zyzrs = regex.findall(rstext)
+        return zyzrs[0]
 
     def _html_parse_of_info(self):
         tag = "Table1"   # id等于Table1
         table = self.soup.find("table", {"id": tag})
+
         if not table:
             raise StudentException(self.code, '获取个人信息失败')
 
@@ -80,6 +117,14 @@ class StudentInfoParse():
         student_xzb_origin = cells2[2].span.text
         student_xzb = student_xzb_origin.split('：')[1]
 
+
+        # divNotPs = self.soup.find_all("div",{"id":"divNotPs"})
+        # table2 = divNotPs.soup.find("table", {"class": "formlist"})
+        # rows = table2.find_all('tr')
+        # cells = rows[5].find_all('td')
+        # pjxfjd =  self.get_pjxfjd()
+
+
         student_info_dict = {
             "student_id": student_id,
             "student_name": student_name,
@@ -87,6 +132,8 @@ class StudentInfoParse():
             "student_zy": student_zy,
             "student_zyfx": student_zyfx,
             "student_xzb": student_xzb,
+            "pjxfjd":self.get_pjxfjd(),
+            "zyzrs":self.get_student_num(),
         }
         self.student_info = student_info_dict
 
