@@ -101,7 +101,9 @@ class ScoreParse():
 
         rows = table.find_all('tr')
         rows.pop(0)
+        self.score = {}
         self.score_info = {}
+        self.all_college = {}
         pjzjd = self.get_pjxfjd()
         zyzrs = self.get_student_num()
         pjzjd_text = 'pjzjd'
@@ -142,26 +144,27 @@ class ScoreParse():
                 # 重修成绩
                 score_dict['cxcj'] = retake_score
             # 组装数组格式的数据备用
-            self.score_info[zyzrs_text] = self.handle_data(zyzrs)
-            self.score_info[pjzjd_text] = self.handle_data(pjzjd)
+            self.all_college[zyzrs_text] = self.handle_data(zyzrs)
+            self.all_college[pjzjd_text] = self.handle_data(pjzjd)
             self.score_info[year] = self.score_info.get(year, {})
             self.score_info[year][term] = self.score_info[year].get(term, [])
             self.score_info[year][term].append(score_dict)
+            self.score = {"score_info":self.score_info,"all_college":self.all_college}
 
 
     def get_score(self, year, term):
         ''' 返回成绩信息json格式 '''
         try:
-            if not self.score_info:
+            if not self.score:
                 raise KeyError
             if year:
                 if term:
-                    return self.score_info[year][term]
-                return self.score_info[year]
+                    return self.score.score_info[year][term]
+                return self.score.score_info[year]
         except KeyError:
             raise ScoreException(self.code, '暂无成绩信息')
 
-        return self.score_info
+        return self.score
 
     @staticmethod
     def handle_data(data):
