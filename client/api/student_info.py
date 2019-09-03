@@ -37,7 +37,7 @@ class StudentInfo(BaseSchoolApi):
         payload = {
             '__VIEWSTATE': view_state,
             'hidLanguage:': '',
-            'Button1': '成绩统计',
+            'Button1': '',
             'ddl_kcxz': '',
             'ddlXN': '',
             'ddlXQ': ''
@@ -68,21 +68,14 @@ class StudentInfoParse():
         # self.get_pjxfjd()
         # self.get_student_num()
 
-    # 获取所有成绩平均绩点
-    def get_pjxfjd(self):
-        span = self.soup.find('span', id='pjxfjd')
-        jd = span.find_all('b')
-        pjxfjd = jd[0].text.split('：')[1]
-        return pjxfjd
+    # # 获取所有成绩平均绩点
+    # def get_pjxfjd(self):
+    #     span = self.soup.find('span', id='pjxfjd')
+    #     jd = span.find_all('b')
+    #     pjxfjd = jd[0].text.split('：')[1]
+    #     return pjxfjd
 
-    # 获取专业所有人数
-    def get_student_num(self):
-        span = self.soup.find('span', id='zyzrs')
-        rs = span.find_all('b')
-        rstext = rs[0].text
-        regex = re.compile('[1-9]\d*')
-        zyzrs = regex.findall(rstext)
-        return zyzrs[0]
+
 
     def _html_parse_of_info(self):
         tag = "Table1"   # id等于Table1
@@ -132,8 +125,8 @@ class StudentInfoParse():
             "student_zy": student_zy,
             "student_zyfx": student_zyfx,
             "student_xzb": student_xzb,
-            "pjxfjd":self.get_pjxfjd(),
-            "zyzrs":self.get_student_num(),
+            # "pjxfjd":self.get_pjxfjd(),
+            # "zyzrs":self.get_student_num(),
         }
         self.student_info = student_info_dict
 

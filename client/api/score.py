@@ -2,8 +2,8 @@
 from __future__ import absolute_import, unicode_literals
 
 from bs4 import BeautifulSoup
+import re
 from requests import RequestException, TooManyRedirects
-
 from school_api.client.api.base import BaseSchoolApi
 from school_api.client.api.utils import get_alert_tip
 from school_api.exceptions import ScoreException
@@ -39,29 +39,59 @@ class Score(BaseSchoolApi):
             'ddlXN': '',
             'ddlXQ': ''
         }
+        payload1 = {
+            '__VIEWSTATE': view_state,
+            'hidLanguage:': '',
+            'Button1': '成绩统计',
+            'ddl_kcxz': '',
+            'ddlXN': '',
+            'ddlXQ': ''
+        }
         try:
             res = self._post(score_url, data=payload, **kwargs)
+            res1 = self._post(score_url, data=payload1, **kwargs)
         except TooManyRedirects:
             raise ScoreException(self.code, '成绩接口已关闭')
         except RequestException:
             raise ScoreException(self.code, '获取成绩信息失败')
 
         html = res.content.decode('GB18030')
+        html1 = res1.content.decode('GB18030')
         tip = get_alert_tip(html)
         if tip:
             raise ScoreException(self.code, tip)
 
-        return ScoreParse(self.code, html, use_api).get_score(score_year, score_term)
+        return ScoreParse(self.code, html, use_api, html1).get_score(score_year, score_term)
 
 
 class ScoreParse():
     ''' 成绩页面解析模块 '''
 
-    def __init__(self, code, html, use_api):
+    def __init__(self, code, html, use_api, html1):
         self.code = code
         self.use_api = use_api
         self.soup = BeautifulSoup(html, "html.parser")
+        self.soup1 = BeautifulSoup(html1, "html.parser")
         self._html_parse_of_score()
+        self.get_pjxfjd()
+        self.get_student_num()
+
+    # 获取平均总绩点
+    def get_pjxfjd(self):
+        span = self.soup1.find('span', id='pjxfjd')
+        jd = span.find_all('b')
+        pjxfjd = jd[0].text.split('：')[1]
+        # print(pjxfjd)
+        return pjxfjd
+
+    # 获取专业所有人数
+    def get_student_num(self):
+        span = self.soup1.find('span', id='zyzrs')
+        rs = span.find_all('b')
+        rstext = rs[0].text
+        regex = re.compile('[1-9]\d*')
+        zyzrs = regex.findall(rstext)
+        return zyzrs[0]
 
     def _html_parse_of_score(self):
         tag = "Datagrid1"
@@ -72,6 +102,10 @@ class ScoreParse():
         rows = table.find_all('tr')
         rows.pop(0)
         self.score_info = {}
+        pjzjd = self.get_pjxfjd()
+        zyzrs = self.get_student_num()
+        pjzjd_text = 'pjzjd'
+        zyzrs_text = 'zyzrs'
         for row in rows:
             cells = row.find_all("td")
             # 学年学期
@@ -108,9 +142,12 @@ class ScoreParse():
                 # 重修成绩
                 score_dict['cxcj'] = retake_score
             # 组装数组格式的数据备用
+            self.score_info[zyzrs_text] = self.handle_data(zyzrs)
+            self.score_info[pjzjd_text] = self.handle_data(pjzjd)
             self.score_info[year] = self.score_info.get(year, {})
             self.score_info[year][term] = self.score_info[year].get(term, [])
             self.score_info[year][term].append(score_dict)
+
 
     def get_score(self, year, term):
         ''' 返回成绩信息json格式 '''
